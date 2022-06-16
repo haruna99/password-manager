@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from random import shuffle, randint, choice
 import pyperclip
+import json
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
@@ -26,7 +27,11 @@ def generate_password():
 def add_data():
     email_text = email.get()
     password_text = password.get()
-    website_text = website.get()
+    website_text = website.get().title()
+    new_data = {website_text: {
+        "email": email_text,
+        "password": password_text
+    }}
 
     if len(email_text) == 0 or len(password_text) == 0 or len(website_text) == 0:
         messagebox.showerror(title="Oops", message="Please don't leave any fields empty")
@@ -34,11 +39,37 @@ def add_data():
         is_ok = messagebox.askokcancel(title=website_text, message=f"These are the details entered:\n Email: {email_text}\n "
                                                                    f"Password: {password_text}")
         if is_ok:
-            with open("data.txt", mode="a") as file:
-                data = f"{website_text}| {email_text} | {password_text}\n"
-                file.write(data)
-            password.delete(0, END)
-            website.delete(0, END)
+            try:
+                with open("data.json", mode="r") as file:
+                    data = json.load(file)
+            except FileNotFoundError:
+                with open("data.json", mode="w") as file:
+                    json.dump(new_data, file, indent=4)
+            else:
+                data.update(new_data)
+                with open("data.json", mode="w") as file:
+                    json.dump(data, file, indent=4)
+            finally:
+                password.delete(0, END)
+                website.delete(0, END)
+
+
+# ---------------------------- SEARCH ------------------------------- #
+def search_password():
+    user_input = website.get().title()
+    try:
+        with open("data.json", mode="r") as file:
+            content = json.load(file)
+    except FileNotFoundError:
+        messagebox.showerror(title="Oops", message="No Data File Found")
+    else:
+        if user_input in content:
+            website_password = content[user_input]["password"]
+            website_email = content[user_input]["email"]
+            messagebox.showinfo(title=user_input, message=f"email: {website_email}\npassword:"
+                                                          f" {website_password}")
+        else:
+            messagebox.showinfo(title="Oops", message="No details for this website exists")
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -65,8 +96,8 @@ password_label.grid(row=3, column=0)
 
 # Text Fields
 
-website = Entry(width=53)
-website.grid(row=1, column=1, columnspan=2, pady=10)
+website = Entry(width=33)
+website.grid(row=1, column=1, pady=10)
 website.focus()
 
 email = Entry(width=53)
@@ -77,6 +108,8 @@ password = Entry(width=33)
 password.grid(row=3, column=1, pady=10)
 
 # Buttons
+search = Button(text="Search", width=15, command=search_password)
+search.grid(row=1, column=2)
 
 generate_password = Button(text="Generate Password", width=15, command=generate_password)
 generate_password.grid(row=3, column=2)
